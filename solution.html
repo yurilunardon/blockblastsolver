@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Block Blast — Solution</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:          #0c1230;
+    --surface:     #111a42;
+    --surface2:    #162050;
+    --border:      #1e2d6e;
+    --empty:       #1a2858;
+    --filled:      #4178d4;
+    --new:         #37d265;
+    --new-clear:   #a0e630;
+    --cleared:     #ffb022;
+    --text:        #c8d8ff;
+    --text-dim:    #5570aa;
+    --accent:      #37d265;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: env(safe-area-inset-bottom);
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    flex-shrink: 0;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  header h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+  }
+
+  #score-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--cleared);
+    background: rgba(255,176,34,0.12);
+    border: 1px solid rgba(255,176,34,0.3);
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  /* ── Step info bar ── */
+  #step-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  #step-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  #step-score {
+    font-size: 11px;
+    color: var(--cleared);
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  #step-score.visible { opacity: 1; }
+
+  /* ── Progress dots ── */
+  #dots {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.3s, transform 0.2s;
+    flex-shrink: 0;
+  }
+  .dot.done    { background: var(--filled); }
+  .dot.current { background: var(--accent); transform: scale(1.4); }
+  .dot.final   { background: var(--cleared); }
+
+  /* ── Main grid ── */
+  .grid-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 14px 16px 0;
+  }
+
+  #main-grid {
+    display: grid;
+    grid-template-columns: 22px repeat(8, 1fr);
+    grid-template-rows: 18px repeat(8, 1fr);
+    gap: 2px;
+    width: min(100%, 380px);
+    aspect-ratio: 9/10; /* 8 cells + label col : 8 cells + label row */
+  }
+
+  .col-lbl {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    transition: color 0.3s;
+  }
+  .col-lbl.highlighted { color: var(--cleared); }
+
+  .row-lbl {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    transition: color 0.3s;
+  }
+  .row-lbl.highlighted { color: var(--cleared); }
+
+  .gc {
+    background: var(--empty);
+    border-radius: 3px;
+    transition: background 0.25s, transform 0.2s;
+    aspect-ratio: 1;
+  }
+  .gc.filled    { background: var(--filled); }
+  .gc.new       { background: var(--new);       transform: scale(0.92); }
+  .gc.new-clear { background: var(--new-clear); transform: scale(0.92); }
+  .gc.clearing  { background: var(--cleared); animation: flash 0.5s ease 2; }
+
+  @keyframes flash {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+  }
+
+  /* ── Piece strip ── */
+  #piece-strip {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    padding: 10px 16px 6px;
+    flex-shrink: 0;
+  }
+
+  .piece-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    transition: border-color 0.3s, background 0.3s;
+    min-width: 72px;
+  }
+  .piece-card.active {
+    border-color: var(--accent);
+    background: rgba(55,210,101,0.08);
+  }
+  .piece-card.used {
+    opacity: 0.3;
+  }
+
+  .piece-lbl {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+  }
+  .piece-card.active .piece-lbl { color: var(--accent); }
+
+  .piece-mini {
+    display: grid;
+    gap: 2px;
+  }
+
+  .pc {
+    width: 14px; height: 14px;
+    border-radius: 2px;
+    background: var(--empty);
+  }
+  .pc.on       { background: var(--filled); }
+  .pc.active   { background: var(--new); }
+
+  /* ── Controls ── */
+  .controls {
+    display: flex;
+    gap: 10px;
+    padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  button {
+    flex: 1;
+    height: 48px;
+    border: none;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  button:active { opacity: 0.8; transform: scale(0.97); }
+  button:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+  #btn-prev {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    flex: 0 0 80px;
+  }
+
+  #btn-next {
+    background: var(--accent);
+    color: #0c1230;
+  }
+
+  /* ── State labels ── */
+  .state-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 4px 16px 0;
+    flex-shrink: 0;
+  }
+
+  /* ── Error ── */
+  #error {
+    display: none;
+    margin: 40px 20px;
+    padding: 16px;
+    background: rgba(255,77,109,0.1);
+    border: 1px solid #ff4d6d;
+    border-radius: 10px;
+    font-size: 13px;
+    color: #ff4d6d;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <h1>🎮 Block Blast — Solution</h1>
+    <div id="score-badge">+0 pts</div>
+  </div>
+  <div id="step-bar">
+    <div id="dots"></div>
+    <div id="step-label">Loading…</div>
+    <div id="step-score"></div>
+  </div>
+</header>
+
+<div id="error"></div>
+
+<div class="grid-section">
+  <div id="main-grid"></div>
+</div>
+
+<div id="piece-strip"></div>
+
+<div class="state-label" id="state-label"></div>
+
+<div class="controls">
+  <button id="btn-prev">← Prev</button>
+  <button id="btn-next">Next →</button>
+</div>
+
+<script>
+const GRID_SIZE = 8;
+const PIECE_MAX = 5;
+
+// ── Decode ────────────────────────────────────────────────────────────────
+function b64decode(s) {
+  const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/'));
+  return JSON.parse(bin);
+}
+
+let data = null;
+try {
+  const hash = location.hash.slice(1);
+  if (!hash) throw new Error('No data in URL');
+  data = b64decode(hash);
+} catch(e) {
+  document.getElementById('error').style.display = 'block';
+  document.getElementById('error').textContent = '⚠ Failed to load solution: ' + e.message;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function cellFilled(grid, r, c) {
+  return !!((grid[r] >> (7 - c)) & 1);
+}
+
+function blockWidth(fig) {
+  const m = Math.max(...fig);
+  if (m === 0) return 0;
+  return Math.floor(Math.log2(m)) + 1;
+}
+
+function placeBlock(grid, fig, row, col) {
+  const bw = blockWidth(fig);
+  const g  = [...grid];
+  const shift = GRID_SIZE - bw - col;
+  for (let i = 0; i < fig.length; i++) g[row + i] |= (fig[i] << shift);
+  return g;
+}
+
+function clearLines(grid, rows, cols) {
+  const g = [...grid];
+  for (const r of rows) g[r] = 0;
+  for (const c of cols) {
+    const mask = (~(1 << (7 - c))) & 0xFF;
+    for (let r = 0; r < GRID_SIZE; r++) g[r] &= mask;
+  }
+  return g;
+}
+
+function getNewCells(fig, row, col) {
+  const bw = blockWidth(fig);
+  const bh = fig.length;
+  const cells = new Set();
+  for (let ri = 0; ri < bh; ri++) {
+    for (let ci = 0; ci < bw; ci++) {
+      if (fig[ri] & (1 << (bw - 1 - ci))) cells.add(`${row+ri},${col+ci}`);
+    }
+  }
+  return cells;
+}
+
+// ── Build step snapshots ──────────────────────────────────────────────────
+//  Each snapshot: { grid (before), newCells, clearedRows, clearedCols, op, gridAfter }
+
+let steps = [];
+let usedPieces = [];  // boolean per piece, set after that piece is placed
+
+if (data) {
+  const ops = data.solution.operations;
+  let grid = [...data.grid];
+  const n = ops.length;
+  const usedBefore = Array(data.figures.length).fill(false);
+
+  // Step 0: initial board (no action)
+  steps.push({
+    grid: [...grid],
+    newCells: new Set(),
+    clearedRows: [],
+    clearedCols: [],
+    op: null,
+    isInitial: true,
+    usedBefore: [...usedBefore],
+  });
+
+  for (let i = 0; i < n; i++) {
+    const op   = ops[i];
+    const bid  = op.placed_block_id;
+    const fig  = data.figures[bid];
+    const row  = op.placed_row;
+    const col  = op.placed_col;
+
+    const newCells    = getNewCells(fig, row, col);
+    const clearedRows = op.cleared_rows || [];
+    const clearedCols = op.cleared_cols || [];
+
+    const usedBeforeStep = [...usedBefore];
+    const gridWithBlock  = placeBlock(grid, fig, row, col);
+    const gridAfter      = clearLines(gridWithBlock, clearedRows, clearedCols);
+
+    steps.push({
+      grid: [...grid],
+      gridWithBlock,
+      gridAfter,
+      newCells,
+      clearedRows,
+      clearedCols,
+      op,
+      isInitial: false,
+      isFinal: i === n - 1,
+      usedBefore: usedBeforeStep,
+      activeBid: bid,
+    });
+
+    usedBefore[bid] = true;
+    grid = gridAfter;
+  }
+
+  // Final step: board after all moves
+  steps.push({
+    grid: [...grid],
+    newCells: new Set(),
+    clearedRows: [],
+    clearedCols: [],
+    op: null,
+    isFinalBoard: true,
+    usedBefore: Array(data.figures.length).fill(true),
+  });
+}
+
+// ── State ─────────────────────────────────────────────────────────────────
+let currentStep = 0;
+const totalSteps = steps.length;
+
+// ── Build DOM ─────────────────────────────────────────────────────────────
+
+// Dots
+function buildDots() {
+  const el = document.getElementById('dots');
+  el.innerHTML = '';
+  // Steps 1..n-2 are the action steps (skip index 0 = initial, last = final board)
+  const actionCount = steps.filter(s => s.op).length;
+  for (let i = 0; i < actionCount; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    d.id = `dot-${i}`;
+    el.appendChild(d);
+  }
+}
+
+// Main grid (once, then update cells)
+function buildMainGrid() {
+  const el = document.getElementById('main-grid');
+  el.innerHTML = '';
+
+  // Corner
+  const corner = document.createElement('div');
+  el.appendChild(corner);
+
+  // Column labels
+  for (let c = 0; c < GRID_SIZE; c++) {
+    const lbl = document.createElement('div');
+    lbl.className = 'col-lbl';
+    lbl.id = `clbl-${c}`;
+    lbl.textContent = String.fromCharCode(65 + c);
+    el.appendChild(lbl);
+  }
+
+  // Rows
+  for (let r = 0; r < GRID_SIZE; r++) {
+    const rlbl = document.createElement('div');
+    rlbl.className = 'row-lbl';
+    rlbl.id = `rlbl-${r}`;
+    rlbl.textContent = r + 1;
+    el.appendChild(rlbl);
+
+    for (let c = 0; c < GRID_SIZE; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'gc';
+      cell.id = `gc-${r}-${c}`;
+      el.appendChild(cell);
+    }
+  }
+}
+
+// Piece strip
+function buildPieceStrip() {
+  const el = document.getElementById('piece-strip');
+  el.innerHTML = '';
+  if (!data) return;
+
+  data.figures.forEach((fig, fi) => {
+    const card = document.createElement('div');
+    card.className = 'piece-card';
+    card.id = `piece-${fi}`;
+
+    const lbl = document.createElement('div');
+    lbl.className = 'piece-lbl';
+    lbl.textContent = `#${fi + 1}`;
+    card.appendChild(lbl);
+
+    const bw = blockWidth(fig);
+    const bh = fig.length;
+    const pgrid = document.createElement('div');
+    pgrid.className = 'piece-mini';
+    pgrid.style.gridTemplateColumns = `repeat(${bw}, 14px)`;
+
+    for (let r = 0; r < bh; r++) {
+      for (let c = 0; c < bw; c++) {
+        const pc = document.createElement('div');
+        pc.className = 'pc';
+        if (fig[r] & (1 << (bw - 1 - c))) pc.classList.add('on');
+        pc.id = `pc-${fi}-${r}-${c}`;
+        pgrid.appendChild(pc);
+      }
+    }
+    card.appendChild(pgrid);
+    el.appendChild(card);
+  });
+}
+
+// ── Render a step ─────────────────────────────────────────────────────────
+function renderStep(idx) {
+  const s = steps[idx];
+  if (!s) return;
+
+  const clearedRowsSet = new Set(s.clearedRows);
+  const clearedColsSet = new Set(s.clearedCols);
+
+  // Determine display grid
+  const displayGrid = s.gridWithBlock || s.grid;
+
+  // Update grid cells
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      const cell = document.getElementById(`gc-${r}-${c}`);
+      if (!cell) continue;
+      const key     = `${r},${c}`;
+      const isNew   = s.newCells.has(key);
+      const isClear = clearedRowsSet.has(r) || clearedColsSet.has(c);
+      const isFill  = cellFilled(displayGrid, r, c);
+
+      cell.className = 'gc';
+      if (isNew && isClear)   cell.classList.add('new-clear');
+      else if (isNew)         cell.classList.add('new');
+      else if (isFill && isClear) cell.classList.add('clearing');
+      else if (isFill)        cell.classList.add('filled');
+    }
+  }
+
+  // Axis label highlights
+  for (let r = 0; r < GRID_SIZE; r++) {
+    const el = document.getElementById(`rlbl-${r}`);
+    if (el) el.classList.toggle('highlighted', clearedRowsSet.has(r));
+  }
+  for (let c = 0; c < GRID_SIZE; c++) {
+    const el = document.getElementById(`clbl-${c}`);
+    if (el) el.classList.toggle('highlighted', clearedColsSet.has(c));
+  }
+
+  // Step label & score
+  let stepText = '';
+  if (s.isInitial)      stepText = 'Initial board';
+  else if (s.isFinalBoard) stepText = '🏁 Final board';
+  else {
+    const opIdx = steps.slice(0, idx).filter(x => x.op).length;
+    const total = steps.filter(x => x.op).length;
+    stepText = `Step ${opIdx + 1} / ${total} — Block #${s.op.placed_block_id + 1} → row ${s.op.placed_row + 1}, col ${s.op.placed_col + 1}`;
+  }
+  document.getElementById('step-label').textContent = stepText;
+
+  const scoreEl = document.getElementById('step-score');
+  if (s.op?.score) {
+    scoreEl.textContent = `+${s.op.score} pts`;
+    scoreEl.classList.add('visible');
+  } else {
+    scoreEl.classList.remove('visible');
+  }
+
+  // Dots
+  let dotIdx = 0;
+  steps.forEach((st, i) => {
+    if (!st.op) return;
+    const dot = document.getElementById(`dot-${dotIdx}`);
+    if (dot) {
+      dot.className = 'dot' + (i < idx ? ' done' : i === idx ? ' current' : '');
+    }
+    dotIdx++;
+  });
+
+  // Piece strip
+  if (data) {
+    data.figures.forEach((_, fi) => {
+      const card = document.getElementById(`piece-${fi}`);
+      if (!card) return;
+      card.classList.remove('active', 'used');
+      if (s.usedBefore?.[fi]) card.classList.add('used');
+      else if (s.activeBid === fi) card.classList.add('active');
+
+      // Highlight piece cells
+      const bw = blockWidth(data.figures[fi]);
+      const bh = data.figures[fi].length;
+      for (let r = 0; r < bh; r++) {
+        for (let c = 0; c < bw; c++) {
+          const pc = document.getElementById(`pc-${fi}-${r}-${c}`);
+          if (!pc) continue;
+          pc.classList.remove('active');
+          if (s.activeBid === fi) pc.classList.add('active');
+        }
+      }
+    });
+  }
+
+  // Buttons
+  document.getElementById('btn-prev').disabled = idx === 0;
+  document.getElementById('btn-next').disabled = idx === totalSteps - 1;
+  document.getElementById('btn-next').textContent =
+    idx === totalSteps - 2 ? 'Final →' : 'Next →';
+
+  // State hint
+  const stateEl = document.getElementById('state-label');
+  if (s.isInitial) stateEl.textContent = 'Tap Next to start';
+  else if (s.isFinalBoard) stateEl.textContent = 'All moves placed';
+  else if (s.clearedRows.length || s.clearedCols.length) {
+    const n = s.clearedRows.length + s.clearedCols.length;
+    stateEl.textContent = `🔥 ${n} line${n>1?'s':''} cleared`;
+  } else stateEl.textContent = '';
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────
+document.getElementById('btn-next').addEventListener('click', () => {
+  if (currentStep < totalSteps - 1) { currentStep++; renderStep(currentStep); }
+});
+document.getElementById('btn-prev').addEventListener('click', () => {
+  if (currentStep > 0) { currentStep--; renderStep(currentStep); }
+});
+
+// Swipe support
+let touchStartX = 0;
+document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, {passive:true});
+document.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 60) {
+    if (dx < 0 && currentStep < totalSteps - 1) { currentStep++; renderStep(currentStep); }
+    if (dx > 0 && currentStep > 0)               { currentStep--; renderStep(currentStep); }
+  }
+}, {passive:true});
+
+// ── Score badge ───────────────────────────────────────────────────────────
+if (data?.solution?.score) {
+  document.getElementById('score-badge').textContent = `+${data.solution.score} pts`;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+if (window.Telegram?.WebApp) {
+  Telegram.WebApp.ready();
+  Telegram.WebApp.expand();
+}
+
+if (data) {
+  buildDots();
+  buildMainGrid();
+  buildPieceStrip();
+  renderStep(0);
+}
+</script>
+</body>
+</html>

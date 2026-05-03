@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Block Blast — Review Detection</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0c1230;
+    --surface:  #111a42;
+    --border:   #1e2d6e;
+    --empty:    #1a2858;
+    --filled:   #4178d4;
+    --new:      #37d265;
+    --clear:    #ffb022;
+    --text:     #c8d8ff;
+    --text-dim: #5570aa;
+    --accent:   #37d265;
+    --danger:   #ff4d6d;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    padding: 0 0 env(safe-area-inset-bottom) 0;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  header h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+  }
+
+  header p {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  .section {
+    padding: 14px 16px 0;
+  }
+
+  .section-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-label span {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Main grid ── */
+  .grid-wrap {
+    display: flex;
+    justify-content: center;
+  }
+
+  #main-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 2px;
+    background: var(--border);
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    width: min(100%, 352px);
+    aspect-ratio: 1;
+  }
+
+  .gc {
+    background: var(--empty);
+    cursor: pointer;
+    transition: background 0.08s;
+    aspect-ratio: 1;
+  }
+  .gc.on  { background: var(--filled); }
+  .gc:active { opacity: 0.7; }
+
+  /* ── Pieces ── */
+  .pieces-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .piece-slot {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 8px 8px;
+  }
+
+  .piece-slot-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    text-align: center;
+    margin-bottom: 6px;
+    letter-spacing: 0.08em;
+  }
+
+  .piece-grid {
+    display: grid;
+    gap: 2px;
+    margin: 0 auto;
+  }
+
+  .pc {
+    background: var(--empty);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.08s;
+    aspect-ratio: 1;
+  }
+  .pc.on  { background: var(--new); }
+  .pc:active { opacity: 0.7; }
+
+  /* ── Footer actions ── */
+  .footer {
+    position: sticky;
+    bottom: 0;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  button {
+    flex: 1;
+    height: 48px;
+    border: none;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  button:active { opacity: 0.8; transform: scale(0.98); }
+
+  #btn-solve {
+    background: var(--accent);
+    color: #0c1230;
+  }
+
+  #btn-reset {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    flex: 0 0 80px;
+  }
+
+  /* ── Error ── */
+  #error-msg {
+    display: none;
+    margin: 12px 16px 0;
+    padding: 10px 14px;
+    background: rgba(255,77,109,0.15);
+    border: 1px solid var(--danger);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--danger);
+  }
+
+  /* ── Hint pills ── */
+  .hint {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 10px 16px 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🔍 Review Detection</h1>
+    <p>Tap cells to toggle · fix any errors · then confirm</p>
+  </div>
+</header>
+
+<div id="error-msg"></div>
+
+<div class="section">
+  <div class="section-label">Board <span></span></div>
+  <div class="grid-wrap">
+    <div id="main-grid"></div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:16px">
+  <div class="section-label">Pieces <span></span></div>
+  <div class="pieces-row" id="pieces-row"></div>
+</div>
+
+<p class="hint">Tap any cell to toggle it on/off</p>
+
+<div class="footer">
+  <button id="btn-reset">↺ Reset</button>
+  <button id="btn-solve">✓ Confirm & Solve</button>
+</div>
+
+<script>
+const GRID_SIZE = 8;
+const PIECE_MAX = 5;
+
+// ── Decode URL hash ────────────────────────────────────────────────────────
+function decode(b64) {
+  const bin = atob(b64.replace(/-/g, '+').replace(/_/g, '/'));
+  return JSON.parse(bin);
+}
+
+let original = null;
+let gridState = Array.from({length: 8}, () => Array(8).fill(0));
+let pieceStates = [];  // array of 5×5 bool[5][5]
+
+try {
+  const hash = location.hash.slice(1);
+  if (!hash) throw new Error('No data in URL');
+  original = decode(hash);
+} catch(e) {
+  showError('Failed to load detection data: ' + e.message);
+}
+
+// ── Grid helpers ───────────────────────────────────────────────────────────
+function rowToBits(rowInt, width) {
+  return Array.from({length: width}, (_, c) => (rowInt >> (width - 1 - c)) & 1);
+}
+
+function blockWidth(fig) {
+  const m = Math.max(...fig);
+  if (m === 0) return 0;
+  return Math.floor(Math.log2(m)) + 1;
+}
+
+function gridFromInts(ints) {
+  return ints.map(v => rowToBits(v, GRID_SIZE));
+}
+
+function gridToInts(g) {
+  return g.map(row => row.reduce((acc, b, i) => acc | (b << (GRID_SIZE - 1 - i)), 0));
+}
+
+function figTo5x5(fig) {
+  const cells = Array.from({length: PIECE_MAX}, () => Array(PIECE_MAX).fill(false));
+  const bw = blockWidth(fig);
+  for (let r = 0; r < Math.min(fig.length, PIECE_MAX); r++) {
+    for (let c = 0; c < Math.min(bw, PIECE_MAX); c++) {
+      cells[r][c] = !!((fig[r] >> (bw - 1 - c)) & 1);
+    }
+  }
+  return cells;
+}
+
+function figFrom5x5(cells) {
+  // find bounding box
+  let maxR = -1, maxC = -1;
+  for (let r = 0; r < PIECE_MAX; r++) {
+    for (let c = 0; c < PIECE_MAX; c++) {
+      if (cells[r][c]) { maxR = Math.max(maxR, r); maxC = Math.max(maxC, c); }
+    }
+  }
+  if (maxR < 0) return [0];
+  const out = [];
+  for (let r = 0; r <= maxR; r++) {
+    let val = 0;
+    for (let c = 0; c <= maxC; c++) val = (val << 1) | (cells[r][c] ? 1 : 0);
+    out.push(val);
+  }
+  return out;
+}
+
+// ── Build main grid UI ─────────────────────────────────────────────────────
+function buildGrid() {
+  const el = document.getElementById('main-grid');
+  el.innerHTML = '';
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'gc' + (gridState[r][c] ? ' on' : '');
+      cell.addEventListener('pointerdown', () => {
+        gridState[r][c] ^= 1;
+        cell.classList.toggle('on', !!gridState[r][c]);
+      });
+      el.appendChild(cell);
+    }
+  }
+}
+
+// ── Build piece editors ────────────────────────────────────────────────────
+function buildPieces() {
+  const row = document.getElementById('pieces-row');
+  row.innerHTML = '';
+  pieceStates.forEach((cells, fi) => {
+    const slot = document.createElement('div');
+    slot.className = 'piece-slot';
+
+    const lbl = document.createElement('div');
+    lbl.className = 'piece-slot-label';
+    lbl.textContent = `PIECE ${fi + 1}`;
+    slot.appendChild(lbl);
+
+    const cellSizePx = Math.floor((row.offsetWidth / 3 - 40) / PIECE_MAX);
+    const csz = Math.max(10, Math.min(22, cellSizePx));
+
+    const pgrid = document.createElement('div');
+    pgrid.className = 'piece-grid';
+    pgrid.style.gridTemplateColumns = `repeat(${PIECE_MAX}, ${csz}px)`;
+    pgrid.style.width = `${PIECE_MAX * csz + (PIECE_MAX - 1) * 2}px`;
+
+    for (let r = 0; r < PIECE_MAX; r++) {
+      for (let c = 0; c < PIECE_MAX; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'pc' + (cells[r][c] ? ' on' : '');
+        cell.style.width = csz + 'px';
+        cell.style.height = csz + 'px';
+        const _r = r, _c = c;
+        cell.addEventListener('pointerdown', () => {
+          pieceStates[fi][_r][_c] = !pieceStates[fi][_r][_c];
+          cell.classList.toggle('on', pieceStates[fi][_r][_c]);
+        });
+        pgrid.appendChild(cell);
+      }
+    }
+
+    slot.appendChild(pgrid);
+    row.appendChild(slot);
+  });
+}
+
+// ── Reset to original detection ────────────────────────────────────────────
+function resetAll() {
+  if (!original) return;
+  gridState  = gridFromInts(original.grid);
+  pieceStates = (original.figures || []).map(figTo5x5);
+  buildGrid();
+  buildPieces();
+}
+
+// ── Confirm & send to bot ──────────────────────────────────────────────────
+document.getElementById('btn-solve').addEventListener('click', () => {
+  const grid    = gridToInts(gridState);
+  const figures = pieceStates.map(figFrom5x5).filter(f => f.some(v => v !== 0));
+
+  const payload = JSON.stringify({ grid, figures });
+
+  if (window.Telegram?.WebApp?.sendData) {
+    Telegram.WebApp.sendData(payload);
+  } else {
+    // Development fallback
+    alert('Would send:\n' + payload);
+  }
+});
+
+document.getElementById('btn-reset').addEventListener('click', resetAll);
+
+// ── Error helper ───────────────────────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = '⚠ ' + msg;
+  el.style.display = 'block';
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+if (window.Telegram?.WebApp) {
+  Telegram.WebApp.ready();
+  Telegram.WebApp.expand();
+}
+
+if (original) {
+  resetAll();
+} else {
+  // Show empty defaults for development
+  pieceStates = Array.from({length: 3}, () =>
+    Array.from({length: PIECE_MAX}, () => Array(PIECE_MAX).fill(false))
+  );
+  buildGrid();
+  buildPieces();
+}
+</script>
+</body>
+</html>
