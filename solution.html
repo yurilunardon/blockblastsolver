@@ -310,13 +310,19 @@ const PIECE_MAX = 5;
 
 // ── Decode ────────────────────────────────────────────────────────────────
 function b64decode(s) {
-  const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/'));
+  let str = s.replace(/-/g, '+').replace(/_/g, '/');
+  // Ripristina il padding base64
+  while (str.length % 4 !== 0) {
+    str += '=';
+  }
+  const bin = atob(str);
   return JSON.parse(bin);
 }
 
 let data = null;
 try {
-  const hash = location.hash.slice(1);
+  // split('&')[0] ignora i parametri di Telegram
+  const hash = location.hash.slice(1).split('&')[0];
   if (!hash) throw new Error('No data in URL');
   data = b64decode(hash);
 } catch(e) {

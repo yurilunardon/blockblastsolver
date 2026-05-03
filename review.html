@@ -238,7 +238,12 @@ const PIECE_MAX = 5;
 
 // ── Decode URL hash ────────────────────────────────────────────────────────
 function decode(b64) {
-  const bin = atob(b64.replace(/-/g, '+').replace(/_/g, '/'));
+  let str = b64.replace(/-/g, '+').replace(/_/g, '/');
+  // Ripristina il padding base64
+  while (str.length % 4 !== 0) {
+    str += '=';
+  }
+  const bin = atob(str);
   return JSON.parse(bin);
 }
 
@@ -247,7 +252,8 @@ let gridState = Array.from({length: 8}, () => Array(8).fill(0));
 let pieceStates = [];  // array of 5×5 bool[5][5]
 
 try {
-  const hash = location.hash.slice(1);
+  // split('&')[0] ignora i parametri di Telegram
+  const hash = location.hash.slice(1).split('&')[0];
   if (!hash) throw new Error('No data in URL');
   original = decode(hash);
 } catch(e) {
