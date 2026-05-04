@@ -322,7 +322,7 @@ function b64decode(s) {
 let data = null;
 try {
   // split('&')[0] ignora i parametri di Telegram
-  const hash = location.hash.slice(1).split('&')[0];
+  const hash = location.hash.slice(1).split('?')[0].split('&')[0];
   if (!hash) throw new Error('No data in URL');
   data = b64decode(hash);
 } catch(e) {

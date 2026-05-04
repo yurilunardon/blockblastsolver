@@ -253,7 +253,7 @@ let pieceStates = [];  // array of 5×5 bool[5][5]
 
 try {
   // split('&')[0] ignora i parametri di Telegram
-  const hash = location.hash.slice(1).split('&')[0];
+  const hash = location.hash.slice(1).split('?')[0].split('&')[0];
   if (!hash) throw new Error('No data in URL');
   original = decode(hash);
 } catch(e) {
