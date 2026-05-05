@@ -6,280 +6,252 @@
 <title>Block Blast — Solution</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
 <style>
-  :root {
-    --bg:          #0c1230;
-    --surface:     #111a42;
-    --surface2:    #162050;
-    --border:      #1e2d6e;
-    --empty:       #1a2858;
-    --filled:      #4178d4;
-    --new:         #37d265;
-    --new-clear:   #a0e630;
-    --cleared:     #ffb022;
-    --text:        #c8d8ff;
-    --text-dim:    #5570aa;
-    --accent:      #37d265;
-  }
+:root {
+  --bg:        #060b1e;
+  --surface:   #0c1432;
+  --surface2:  #0f1a40;
+  --border:    #172050;
+  --border2:   rgba(60,120,255,0.22);
 
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  --empty:     #0c1835;
+  --filled:    #1a65ef;
+  --filled-hi: #3d88ff;
+  --new:       #20d468;
+  --new-hi:    #60ffa0;
+  --new-clear: #c8f040;
+  --cleared:   #ffb020;
+  --cleared-hi:#ffe060;
+  --cleared-bg:rgba(255,176,32,0.10);
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    padding-bottom: env(safe-area-inset-bottom);
-    overflow-x: hidden;
-  }
+  --text:      #b0ccff;
+  --text-dim:  #4a6aaa;
+  --text-mid:  rgba(160,200,255,0.7);
+  --accent:    #20d468;
+  --accent2:   #00d4ff;
+  --danger:    #ff4d6d;
+}
 
-  /* ── Header ── */
-  header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 12px 16px;
-    flex-shrink: 0;
-  }
+*{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
 
-  .header-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
+body {
+  background:var(--bg); color:var(--text);
+  font-family:'Inter',sans-serif;
+  min-height:100vh; display:flex; flex-direction:column;
+  padding-bottom:env(safe-area-inset-bottom); overflow-x:hidden;
+}
 
-  header h1 {
-    font-family: 'Space Mono', monospace;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    color: var(--accent);
-  }
+/* ── Header ── */
+header {
+  background:var(--surface); border-bottom:1px solid var(--border2);
+  padding:11px 15px 10px; flex-shrink:0;
+}
+.header-top {
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+}
+header h1 {
+  font-family:'Orbitron',monospace; font-size:11px; font-weight:900;
+  letter-spacing:.18em; color:var(--accent2); text-transform:uppercase;
+}
+#score-badge {
+  font-family:'Orbitron',monospace; font-size:11px; color:var(--cleared);
+  background:rgba(255,176,32,.12); border:1px solid rgba(255,176,32,.3);
+  padding:3px 10px; border-radius:20px; white-space:nowrap; letter-spacing:.06em;
+}
 
-  #score-badge {
-    font-family: 'Space Mono', monospace;
-    font-size: 12px;
-    color: var(--cleared);
-    background: rgba(255,176,34,0.12);
-    border: 1px solid rgba(255,176,34,0.3);
-    padding: 3px 10px;
-    border-radius: 20px;
-    white-space: nowrap;
-  }
+/* ── Step bar ── */
+#step-bar {
+  display:flex; align-items:center; gap:8px; margin-top:8px;
+  flex-wrap:wrap;
+}
+#step-label {
+  font-size:11px; font-weight:600; color:var(--text); letter-spacing:.02em;
+}
+#step-score {
+  font-size:11px; color:var(--cleared); font-weight:700;
+  opacity:0; transition:opacity .3s;
+}
+#step-score.visible{ opacity:1; }
 
-  /* ── Step info bar ── */
-  #step-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 8px;
-  }
+/* ── Progress dots ── */
+#dots { display:flex; gap:5px; align-items:center; }
+.dot {
+  width:6px; height:6px; border-radius:50%; background:var(--border);
+  transition:background .3s,transform .2s; flex-shrink:0;
+}
+.dot.done    { background:var(--filled); }
+.dot.current { background:var(--accent); transform:scale(1.5); }
+.dot.final   { background:var(--cleared); }
 
-  #step-label {
-    font-family: 'Space Mono', monospace;
-    font-size: 12px;
-    color: var(--text);
-  }
+/* ── Clearing alert bar ── */
+#clear-bar {
+  display:none;
+  background:rgba(255,176,32,.08); border-bottom:1px solid rgba(255,176,32,.25);
+  padding:6px 15px;
+  font-size:11px; font-weight:600; color:var(--cleared); letter-spacing:.04em;
+  text-align:center;
+}
+#clear-bar.visible { display:block; }
 
-  #step-score {
-    font-size: 11px;
-    color: var(--cleared);
-    font-weight: 600;
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-  #step-score.visible { opacity: 1; }
+/* ── Grid section ── */
+.grid-section {
+  flex:1; display:flex; flex-direction:column; align-items:center;
+  padding:12px 14px 0;
+}
 
-  /* ── Progress dots ── */
-  #dots {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-  }
+/* grid with coordinate labels */
+#grid-outer {
+  position:relative; width:min(100%,380px);
+}
+#col-labels {
+  display:grid; padding-left:20px; margin-bottom:2px;
+}
+.clbl {
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Orbitron',monospace; font-size:8px; color:var(--text-dim);
+  transition:color .3s;
+}
+.clbl.hl { color:var(--cleared); font-weight:700; }
 
-  .dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--border);
-    transition: background 0.3s, transform 0.2s;
-    flex-shrink: 0;
-  }
-  .dot.done    { background: var(--filled); }
-  .dot.current { background: var(--accent); transform: scale(1.4); }
-  .dot.final   { background: var(--cleared); }
+#grid-row-wrap { display:flex; }
+#row-labels {
+  display:flex; flex-direction:column; width:20px; flex-shrink:0;
+}
+.rlbl {
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Orbitron',monospace; font-size:8px; color:var(--text-dim);
+  transition:color .3s;
+}
+.rlbl.hl { color:var(--cleared); font-weight:700; }
 
-  /* ── Main grid ── */
-  .grid-section {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 14px 16px 0;
-  }
+#main-grid {
+  flex:1;
+  display:grid; grid-template-columns:repeat(8,1fr);
+  gap:2px;
+}
 
-  #main-grid {
-    display: grid;
-    grid-template-columns: 22px repeat(8, 1fr);
-    grid-template-rows: 18px repeat(8, 1fr);
-    gap: 2px;
-    width: min(100%, 380px);
-    aspect-ratio: 9/10; /* 8 cells + label col : 8 cells + label row */
-  }
+.gc {
+  background:var(--empty); border-radius:3px;
+  transition:background .22s,transform .18s,box-shadow .18s;
+  aspect-ratio:1; position:relative; overflow:hidden;
+}
+.gc::after {
+  content:''; position:absolute; top:0; left:0; right:0; height:35%;
+  background:linear-gradient(to bottom,rgba(255,255,255,.05),transparent);
+  pointer-events:none;
+}
+.gc.filled {
+  background:linear-gradient(145deg,var(--filled-hi),var(--filled));
+}
+.gc.new {
+  background:linear-gradient(145deg,var(--new-hi),var(--new));
+  transform:scale(.9);
+  box-shadow:0 0 8px rgba(32,212,104,.4);
+}
+.gc.new-clear {
+  background:linear-gradient(145deg,#e0ff80,var(--new-clear));
+  transform:scale(.9);
+  box-shadow:0 0 8px rgba(200,240,64,.4);
+}
+/* clearing: bright gold + flash + hatching */
+.gc.clearing {
+  background:linear-gradient(145deg,var(--cleared-hi),var(--cleared));
+  animation:flashClear .55s ease 3;
+  box-shadow:0 0 10px rgba(255,176,32,.5);
+}
+.gc.clearing::before {
+  content:''; position:absolute; inset:0;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,transparent 4px,
+    rgba(255,255,255,.15) 4px,rgba(255,255,255,.15) 6px
+  );
+  pointer-events:none;
+}
 
-  .col-lbl {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Space Mono', monospace;
-    font-size: 9px;
-    color: var(--text-dim);
-    transition: color 0.3s;
-  }
-  .col-lbl.highlighted { color: var(--cleared); }
+@keyframes flashClear {
+  0%,100%{opacity:1}
+  45%{opacity:.25}
+}
 
-  .row-lbl {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Space Mono', monospace;
-    font-size: 9px;
-    color: var(--text-dim);
-    transition: color 0.3s;
-  }
-  .row-lbl.highlighted { color: var(--cleared); }
+/* Cleared row/col: full-row glow outline */
+.row-cleared-hl, .col-cleared-hl {
+  position:absolute; pointer-events:none; border-radius:4px;
+  border:2px solid var(--cleared);
+  box-shadow:0 0 12px rgba(255,176,32,.45);
+  z-index:3; animation:pulseClr 1.2s ease-in-out infinite;
+}
+@keyframes pulseClr {
+  0%,100%{opacity:1} 50%{opacity:.5}
+}
 
-  .gc {
-    background: var(--empty);
-    border-radius: 3px;
-    transition: background 0.25s, transform 0.2s;
-    aspect-ratio: 1;
-  }
-  .gc.filled    { background: var(--filled); }
-  .gc.new       { background: var(--new);       transform: scale(0.92); }
-  .gc.new-clear { background: var(--new-clear); transform: scale(0.92); }
-  .gc.clearing  { background: var(--cleared); animation: flash 0.5s ease 2; }
+/* ── Piece strip ── */
+#piece-strip {
+  display:flex; justify-content:center; gap:8px;
+  padding:10px 14px 5px; flex-shrink:0;
+}
+.piece-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:9px; padding:6px 8px;
+  display:flex; flex-direction:column; align-items:center; gap:5px;
+  transition:border-color .3s,background .3s,opacity .3s;
+  min-width:64px;
+}
+.piece-card.active {
+  border-color:var(--accent); background:rgba(32,212,104,.08);
+}
+.piece-card.used { opacity:.25; }
 
-  @keyframes flash {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.3; }
-  }
+.piece-lbl {
+  font-family:'Orbitron',monospace; font-size:8px; color:var(--text-dim);
+  letter-spacing:.1em;
+}
+.piece-card.active .piece-lbl { color:var(--accent); }
 
-  /* ── Piece strip ── */
-  #piece-strip {
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-    padding: 10px 16px 6px;
-    flex-shrink: 0;
-  }
+.piece-mini { display:grid; gap:2px; }
+.pc { width:13px; height:13px; border-radius:2px; background:var(--empty); }
+.pc.on     { background:linear-gradient(135deg,var(--filled-hi),var(--filled)); }
+.pc.active { background:linear-gradient(135deg,var(--new-hi),var(--new)); box-shadow:0 0 4px rgba(32,212,104,.4); }
 
-  .piece-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 6px 8px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    transition: border-color 0.3s, background 0.3s;
-    min-width: 72px;
-  }
-  .piece-card.active {
-    border-color: var(--accent);
-    background: rgba(55,210,101,0.08);
-  }
-  .piece-card.used {
-    opacity: 0.3;
-  }
+/* ── Controls ── */
+.controls {
+  display:flex; gap:10px;
+  padding:8px 14px calc(8px + env(safe-area-inset-bottom));
+  flex-shrink:0; border-top:1px solid var(--border); background:var(--bg);
+}
+button {
+  flex:1; height:48px; border:none; border-radius:10px;
+  font-family:'Inter',sans-serif; font-size:14px; font-weight:600;
+  cursor:pointer; transition:opacity .15s,transform .1s;
+}
+button:active { opacity:.8; transform:scale(.97); }
+button:disabled { opacity:.25; cursor:not-allowed; transform:none; }
 
-  .piece-lbl {
-    font-family: 'Space Mono', monospace;
-    font-size: 9px;
-    color: var(--text-dim);
-  }
-  .piece-card.active .piece-lbl { color: var(--accent); }
+#btn-prev { background:var(--surface2); color:var(--text); border:1px solid var(--border); flex:0 0 80px; }
+#btn-next { background:var(--accent); color:#060b1e; }
 
-  .piece-mini {
-    display: grid;
-    gap: 2px;
-  }
+/* ── State hint ── */
+.state-label {
+  font-size:10.5px; color:var(--text-dim); text-align:center;
+  padding:4px 14px 0; flex-shrink:0; min-height:20px;
+  letter-spacing:.04em;
+}
 
-  .pc {
-    width: 14px; height: 14px;
-    border-radius: 2px;
-    background: var(--empty);
-  }
-  .pc.on       { background: var(--filled); }
-  .pc.active   { background: var(--new); }
-
-  /* ── Controls ── */
-  .controls {
-    display: flex;
-    gap: 10px;
-    padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
-    flex-shrink: 0;
-    border-top: 1px solid var(--border);
-    background: var(--bg);
-  }
-
-  button {
-    flex: 1;
-    height: 48px;
-    border: none;
-    border-radius: 10px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: opacity 0.15s, transform 0.1s;
-  }
-  button:active { opacity: 0.8; transform: scale(0.97); }
-  button:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
-
-  #btn-prev {
-    background: var(--surface2);
-    color: var(--text);
-    border: 1px solid var(--border);
-    flex: 0 0 80px;
-  }
-
-  #btn-next {
-    background: var(--accent);
-    color: #0c1230;
-  }
-
-  /* ── State labels ── */
-  .state-label {
-    font-size: 11px;
-    color: var(--text-dim);
-    text-align: center;
-    padding: 4px 16px 0;
-    flex-shrink: 0;
-  }
-
-  /* ── Error ── */
-  #error {
-    display: none;
-    margin: 40px 20px;
-    padding: 16px;
-    background: rgba(255,77,109,0.1);
-    border: 1px solid #ff4d6d;
-    border-radius: 10px;
-    font-size: 13px;
-    color: #ff4d6d;
-    text-align: center;
-  }
+/* ── Error ── */
+#error {
+  display:none; margin:40px 20px; padding:16px;
+  background:rgba(255,77,109,.1); border:1px solid var(--danger);
+  border-radius:10px; font-size:13px; color:var(--danger); text-align:center;
+}
 </style>
 </head>
 <body>
 
 <header>
   <div class="header-top">
-    <h1>🎮 Block Blast — Solution</h1>
+    <h1>Block Blast — Solution</h1>
     <div id="score-badge">+0 pts</div>
   </div>
   <div id="step-bar">
@@ -289,14 +261,22 @@
   </div>
 </header>
 
+<div id="clear-bar">🔥 Lines cleared!</div>
+
 <div id="error"></div>
 
 <div class="grid-section">
-  <div id="main-grid"></div>
+  <!-- column labels + grid with row labels -->
+  <div id="grid-outer">
+    <div id="col-labels"></div>
+    <div id="grid-row-wrap">
+      <div id="row-labels"></div>
+      <div id="main-grid"></div>
+    </div>
+  </div>
 </div>
 
 <div id="piece-strip"></div>
-
 <div class="state-label" id="state-label"></div>
 
 <div class="controls">
@@ -306,370 +286,297 @@
 
 <script>
 const GRID_SIZE = 8;
-const PIECE_MAX = 5;
 
-// ── Decode ────────────────────────────────────────────────────────────────
+// ── Decode ────────────────────────────────────────────────────────────────────
 function b64decode(s) {
-  let str = s.replace(/-/g, '+').replace(/_/g, '/');
-  // Ripristina il padding base64
-  while (str.length % 4 !== 0) {
-    str += '=';
-  }
-  const bin = atob(str);
-  return JSON.parse(bin);
+  let str = s.replace(/-/g,'+').replace(/_/g,'/');
+  while(str.length%4!==0) str+='=';
+  return JSON.parse(atob(str));
 }
 
 let data = null;
 try {
-  // split('&')[0] ignora i parametri di Telegram
   const hash = location.hash.slice(1).split('?')[0].split('&')[0];
-  if (!hash) throw new Error('No data in URL');
+  if(!hash) throw new Error('No data in URL');
   data = b64decode(hash);
 } catch(e) {
-  document.getElementById('error').style.display = 'block';
-  document.getElementById('error').textContent = '⚠ Failed to load solution: ' + e.message;
+  const el = document.getElementById('error');
+  el.style.display='block';
+  el.textContent='⚠ Failed to load solution: '+e.message;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────
-function cellFilled(grid, r, c) {
-  return !!((grid[r] >> (7 - c)) & 1);
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function cellFilled(grid,r,c){ return !!((grid[r]>>(7-c))&1); }
+function blockWidth(fig){ const m=Math.max(...fig); return m===0?0:Math.floor(Math.log2(m))+1; }
 
-function blockWidth(fig) {
-  const m = Math.max(...fig);
-  if (m === 0) return 0;
-  return Math.floor(Math.log2(m)) + 1;
-}
-
-function placeBlock(grid, fig, row, col) {
-  const bw = blockWidth(fig);
-  const g  = [...grid];
-  const shift = GRID_SIZE - bw - col;
-  for (let i = 0; i < fig.length; i++) g[row + i] |= (fig[i] << shift);
+function placeBlock(grid,fig,row,col){
+  const bw=blockWidth(fig), g=[...grid], shift=GRID_SIZE-bw-col;
+  for(let i=0;i<fig.length;i++) g[row+i]|=(fig[i]<<shift);
   return g;
 }
-
-function clearLines(grid, rows, cols) {
-  const g = [...grid];
-  for (const r of rows) g[r] = 0;
-  for (const c of cols) {
-    const mask = (~(1 << (7 - c))) & 0xFF;
-    for (let r = 0; r < GRID_SIZE; r++) g[r] &= mask;
-  }
+function clearLines(grid,rows,cols){
+  const g=[...grid];
+  for(const r of rows) g[r]=0;
+  for(const c of cols){ const mask=(~(1<<(7-c)))&0xFF; for(let r=0;r<GRID_SIZE;r++) g[r]&=mask; }
   return g;
 }
-
-function getNewCells(fig, row, col) {
-  const bw = blockWidth(fig);
-  const bh = fig.length;
-  const cells = new Set();
-  for (let ri = 0; ri < bh; ri++) {
-    for (let ci = 0; ci < bw; ci++) {
-      if (fig[ri] & (1 << (bw - 1 - ci))) cells.add(`${row+ri},${col+ci}`);
-    }
-  }
+function getNewCells(fig,row,col){
+  const bw=blockWidth(fig), bh=fig.length, cells=new Set();
+  for(let ri=0;ri<bh;ri++) for(let ci=0;ci<bw;ci++)
+    if(fig[ri]&(1<<(bw-1-ci))) cells.add(`${row+ri},${col+ci}`);
   return cells;
 }
 
-// ── Build step snapshots ──────────────────────────────────────────────────
-//  Each snapshot: { grid (before), newCells, clearedRows, clearedCols, op, gridAfter }
+// ── Build step snapshots ──────────────────────────────────────────────────────
+let steps=[];
+if(data){
+  const ops=data.solution.operations;
+  let grid=[...data.grid];
+  const n=ops.length;
+  const usedBefore=Array(data.figures.length).fill(false);
 
-let steps = [];
-let usedPieces = [];  // boolean per piece, set after that piece is placed
+  steps.push({ grid:[...grid], newCells:new Set(), clearedRows:[], clearedCols:[], op:null, isInitial:true, usedBefore:[...usedBefore] });
 
-if (data) {
-  const ops = data.solution.operations;
-  let grid = [...data.grid];
-  const n = ops.length;
-  const usedBefore = Array(data.figures.length).fill(false);
-
-  // Step 0: initial board (no action)
-  steps.push({
-    grid: [...grid],
-    newCells: new Set(),
-    clearedRows: [],
-    clearedCols: [],
-    op: null,
-    isInitial: true,
-    usedBefore: [...usedBefore],
-  });
-
-  for (let i = 0; i < n; i++) {
-    const op   = ops[i];
-    const bid  = op.placed_block_id;
-    const fig  = data.figures[bid];
-    const row  = op.placed_row;
-    const col  = op.placed_col;
-
-    const newCells    = getNewCells(fig, row, col);
-    const clearedRows = op.cleared_rows || [];
-    const clearedCols = op.cleared_cols || [];
-
-    const usedBeforeStep = [...usedBefore];
-    const gridWithBlock  = placeBlock(grid, fig, row, col);
-    const gridAfter      = clearLines(gridWithBlock, clearedRows, clearedCols);
-
+  for(let i=0;i<n;i++){
+    const op=ops[i], bid=op.placed_block_id;
+    const fig=data.figures[bid];
+    const row=op.placed_row, col=op.placed_col;
+    const newCells=getNewCells(fig,row,col);
+    const clearedRows=op.cleared_rows||[];
+    const clearedCols=op.cleared_cols||[];
+    const gridWithBlock=placeBlock(grid,fig,row,col);
+    const gridAfter=clearLines(gridWithBlock,clearedRows,clearedCols);
     steps.push({
-      grid: [...grid],
-      gridWithBlock,
-      gridAfter,
-      newCells,
-      clearedRows,
-      clearedCols,
-      op,
-      isInitial: false,
-      isFinal: i === n - 1,
-      usedBefore: usedBeforeStep,
-      activeBid: bid,
+      grid:[...grid], gridWithBlock, gridAfter,
+      newCells, clearedRows, clearedCols,
+      op, isInitial:false, isFinal:i===n-1,
+      usedBefore:[...usedBefore], activeBid:bid,
     });
-
-    usedBefore[bid] = true;
-    grid = gridAfter;
+    usedBefore[bid]=true;
+    grid=gridAfter;
   }
+  steps.push({ grid:[...grid], newCells:new Set(), clearedRows:[], clearedCols:[], op:null, isFinalBoard:true, usedBefore:Array(data.figures.length).fill(true) });
+}
 
-  // Final step: board after all moves
-  steps.push({
-    grid: [...grid],
-    newCells: new Set(),
-    clearedRows: [],
-    clearedCols: [],
-    op: null,
-    isFinalBoard: true,
-    usedBefore: Array(data.figures.length).fill(true),
+let currentStep=0;
+const totalSteps=steps.length;
+
+// ── Build DOM ─────────────────────────────────────────────────────────────────
+function buildDots(){
+  const el=document.getElementById('dots'); el.innerHTML='';
+  steps.filter(s=>s.op).forEach((_,i)=>{
+    const d=document.createElement('div'); d.className='dot'; d.id=`dot-${i}`;
+    el.appendChild(d);
   });
 }
 
-// ── State ─────────────────────────────────────────────────────────────────
-let currentStep = 0;
-const totalSteps = steps.length;
-
-// ── Build DOM ─────────────────────────────────────────────────────────────
-
-// Dots
-function buildDots() {
-  const el = document.getElementById('dots');
-  el.innerHTML = '';
-  // Steps 1..n-2 are the action steps (skip index 0 = initial, last = final board)
-  const actionCount = steps.filter(s => s.op).length;
-  for (let i = 0; i < actionCount; i++) {
-    const d = document.createElement('div');
-    d.className = 'dot';
-    d.id = `dot-${i}`;
-    el.appendChild(d);
-  }
-}
-
-// Main grid (once, then update cells)
-function buildMainGrid() {
-  const el = document.getElementById('main-grid');
-  el.innerHTML = '';
-
-  // Corner
-  const corner = document.createElement('div');
-  el.appendChild(corner);
-
-  // Column labels
-  for (let c = 0; c < GRID_SIZE; c++) {
-    const lbl = document.createElement('div');
-    lbl.className = 'col-lbl';
-    lbl.id = `clbl-${c}`;
-    lbl.textContent = String.fromCharCode(65 + c);
+function buildColLabels(){
+  const el=document.getElementById('col-labels');
+  el.innerHTML='';
+  el.style.gridTemplateColumns=`repeat(${GRID_SIZE},1fr)`;
+  for(let c=0;c<GRID_SIZE;c++){
+    const lbl=document.createElement('div');
+    lbl.className='clbl'; lbl.id=`clbl-${c}`;
+    lbl.textContent=String.fromCharCode(65+c);
     el.appendChild(lbl);
   }
+}
 
-  // Rows
-  for (let r = 0; r < GRID_SIZE; r++) {
-    const rlbl = document.createElement('div');
-    rlbl.className = 'row-lbl';
-    rlbl.id = `rlbl-${r}`;
-    rlbl.textContent = r + 1;
-    el.appendChild(rlbl);
-
-    for (let c = 0; c < GRID_SIZE; c++) {
-      const cell = document.createElement('div');
-      cell.className = 'gc';
-      cell.id = `gc-${r}-${c}`;
-      el.appendChild(cell);
-    }
+function buildRowLabels(){
+  const el=document.getElementById('row-labels'); el.innerHTML='';
+  for(let r=0;r<GRID_SIZE;r++){
+    const rl=document.createElement('div'); rl.className='rlbl'; rl.id=`rlbl-${r}`;
+    rl.style.height=`calc(100%/${GRID_SIZE})`;
+    rl.textContent=r+1; el.appendChild(rl);
   }
 }
 
-// Piece strip
-function buildPieceStrip() {
-  const el = document.getElementById('piece-strip');
-  el.innerHTML = '';
-  if (!data) return;
+function buildMainGrid(){
+  const el=document.getElementById('main-grid'); el.innerHTML='';
+  for(let r=0;r<GRID_SIZE;r++) for(let c=0;c<GRID_SIZE;c++){
+    const cell=document.createElement('div'); cell.className='gc'; cell.id=`gc-${r}-${c}`;
+    el.appendChild(cell);
+  }
+}
 
-  data.figures.forEach((fig, fi) => {
-    const card = document.createElement('div');
-    card.className = 'piece-card';
-    card.id = `piece-${fi}`;
-
-    const lbl = document.createElement('div');
-    lbl.className = 'piece-lbl';
-    lbl.textContent = `#${fi + 1}`;
-    card.appendChild(lbl);
-
-    const bw = blockWidth(fig);
-    const bh = fig.length;
-    const pgrid = document.createElement('div');
-    pgrid.className = 'piece-mini';
-    pgrid.style.gridTemplateColumns = `repeat(${bw}, 14px)`;
-
-    for (let r = 0; r < bh; r++) {
-      for (let c = 0; c < bw; c++) {
-        const pc = document.createElement('div');
-        pc.className = 'pc';
-        if (fig[r] & (1 << (bw - 1 - c))) pc.classList.add('on');
-        pc.id = `pc-${fi}-${r}-${c}`;
-        pgrid.appendChild(pc);
-      }
+function buildPieceStrip(){
+  const el=document.getElementById('piece-strip'); el.innerHTML='';
+  if(!data) return;
+  data.figures.forEach((fig,fi)=>{
+    const card=document.createElement('div'); card.className='piece-card'; card.id=`piece-${fi}`;
+    const lbl=document.createElement('div'); lbl.className='piece-lbl'; lbl.textContent=`#${fi+1}`; card.appendChild(lbl);
+    const bw=blockWidth(fig), bh=fig.length;
+    const pg=document.createElement('div'); pg.className='piece-mini'; pg.style.gridTemplateColumns=`repeat(${bw},13px)`;
+    for(let r=0;r<bh;r++) for(let c=0;c<bw;c++){
+      const pc=document.createElement('div'); pc.className='pc';
+      if(fig[r]&(1<<(bw-1-c))) pc.classList.add('on');
+      pc.id=`pc-${fi}-${r}-${c}`; pg.appendChild(pc);
     }
-    card.appendChild(pgrid);
-    el.appendChild(card);
+    card.appendChild(pg); el.appendChild(card);
   });
 }
 
-// ── Render a step ─────────────────────────────────────────────────────────
-function renderStep(idx) {
-  const s = steps[idx];
-  if (!s) return;
+// ── Overlay helpers for cleared lines ─────────────────────────────────────────
+let clearOverlays=[];
+function removeClearOverlays(){
+  clearOverlays.forEach(el=>el.remove()); clearOverlays=[];
+}
+function addClearOverlays(clearedRows,clearedCols){
+  const gw=document.getElementById('main-grid');
+  const gwRect=gw.getBoundingClientRect();
+  const cellW=gwRect.width/GRID_SIZE;
+  const cellH=gwRect.height/GRID_SIZE;
+  // We use position:relative parent
+  const parent=gw.parentElement; // grid-row-wrap
 
-  const clearedRowsSet = new Set(s.clearedRows);
-  const clearedColsSet = new Set(s.clearedCols);
+  clearedRows.forEach(r=>{
+    const ov=document.createElement('div');
+    ov.className='row-cleared-hl';
+    ov.style.cssText=`position:absolute;left:20px;top:${r*cellH}px;right:0;height:${cellH}px;`;
+    parent.style.position='relative';
+    parent.appendChild(ov);
+    clearOverlays.push(ov);
+  });
+  clearedCols.forEach(c=>{
+    const ov=document.createElement('div');
+    ov.className='col-cleared-hl';
+    ov.style.cssText=`position:absolute;left:${20+c*cellW}px;top:0;width:${cellW}px;bottom:0;`;
+    parent.style.position='relative';
+    parent.appendChild(ov);
+    clearOverlays.push(ov);
+  });
+}
 
-  // Determine display grid
-  const displayGrid = s.gridWithBlock || s.grid;
+// ── Render step ───────────────────────────────────────────────────────────────
+function renderStep(idx){
+  const s=steps[idx]; if(!s) return;
+  const crSet=new Set(s.clearedRows), ccSet=new Set(s.clearedCols);
+  const hasClears=crSet.size>0||ccSet.size>0;
+  const displayGrid=s.gridWithBlock||s.grid;
 
-  // Update grid cells
-  for (let r = 0; r < GRID_SIZE; r++) {
-    for (let c = 0; c < GRID_SIZE; c++) {
-      const cell = document.getElementById(`gc-${r}-${c}`);
-      if (!cell) continue;
-      const key     = `${r},${c}`;
-      const isNew   = s.newCells.has(key);
-      const isClear = clearedRowsSet.has(r) || clearedColsSet.has(c);
-      const isFill  = cellFilled(displayGrid, r, c);
+  removeClearOverlays();
 
-      cell.className = 'gc';
-      if (isNew && isClear)   cell.classList.add('new-clear');
-      else if (isNew)         cell.classList.add('new');
-      else if (isFill && isClear) cell.classList.add('clearing');
-      else if (isFill)        cell.classList.add('filled');
-    }
+  // Grid cells
+  for(let r=0;r<GRID_SIZE;r++) for(let c=0;c<GRID_SIZE;c++){
+    const cell=document.getElementById(`gc-${r}-${c}`); if(!cell) continue;
+    const key=`${r},${c}`;
+    const isNew=s.newCells.has(key);
+    const isClear=crSet.has(r)||ccSet.has(c);
+    const isFill=cellFilled(displayGrid,r,c);
+    cell.className='gc';
+    if(isNew&&isClear)       cell.classList.add('new-clear');
+    else if(isNew)           cell.classList.add('new');
+    else if(isFill&&isClear) cell.classList.add('clearing');
+    else if(isFill)          cell.classList.add('filled');
   }
 
-  // Axis label highlights
-  for (let r = 0; r < GRID_SIZE; r++) {
-    const el = document.getElementById(`rlbl-${r}`);
-    if (el) el.classList.toggle('highlighted', clearedRowsSet.has(r));
+  // Axis labels
+  for(let r=0;r<GRID_SIZE;r++){
+    const el=document.getElementById(`rlbl-${r}`);
+    if(el) el.classList.toggle('hl',crSet.has(r));
   }
-  for (let c = 0; c < GRID_SIZE; c++) {
-    const el = document.getElementById(`clbl-${c}`);
-    if (el) el.classList.toggle('highlighted', clearedColsSet.has(c));
+  for(let c=0;c<GRID_SIZE;c++){
+    const el=document.getElementById(`clbl-${c}`);
+    if(el) el.classList.toggle('hl',ccSet.has(c));
   }
 
-  // Step label & score
-  let stepText = '';
-  if (s.isInitial)      stepText = 'Initial board';
-  else if (s.isFinalBoard) stepText = '🏁 Final board';
-  else {
-    const opIdx = steps.slice(0, idx).filter(x => x.op).length;
-    const total = steps.filter(x => x.op).length;
-    stepText = `Step ${opIdx + 1} / ${total} — Block #${s.op.placed_block_id + 1} → row ${s.op.placed_row + 1}, col ${s.op.placed_col + 1}`;
+  // Overlays (deferred so grid is laid out)
+  if(hasClears){
+    requestAnimationFrame(()=>addClearOverlays([...crSet],[...ccSet]));
   }
-  document.getElementById('step-label').textContent = stepText;
 
-  const scoreEl = document.getElementById('step-score');
-  if (s.op?.score) {
-    scoreEl.textContent = `+${s.op.score} pts`;
-    scoreEl.classList.add('visible');
+  // Clearing alert bar
+  const cbar=document.getElementById('clear-bar');
+  if(hasClears){
+    const parts=[];
+    if(crSet.size) parts.push([...crSet].sort((a,b)=>a-b).map(r=>`Row ${r+1}`).join(', '));
+    if(ccSet.size) parts.push([...ccSet].sort((a,b)=>a-b).map(c=>`Col ${String.fromCharCode(65+c)}`).join(', '));
+    cbar.textContent=`🔥 CLEARED: ${parts.join(' + ')}${s.op?.score?`  |  +${s.op.score} pts`:''}`;
+    cbar.classList.add('visible');
   } else {
-    scoreEl.classList.remove('visible');
+    cbar.classList.remove('visible');
   }
+
+  // Step label
+  let stepText='';
+  if(s.isInitial)        stepText='Initial board';
+  else if(s.isFinalBoard) stepText='🏁 Final board';
+  else {
+    const opIdx=steps.slice(0,idx).filter(x=>x.op).length;
+    const total=steps.filter(x=>x.op).length;
+    const col=String.fromCharCode(65+s.op.placed_col);
+    stepText=`Step ${opIdx+1}/${total}  —  Block #${s.op.placed_block_id+1} → row ${s.op.placed_row+1}, col ${col}`;
+  }
+  document.getElementById('step-label').textContent=stepText;
+
+  const scoreEl=document.getElementById('step-score');
+  if(s.op?.score){ scoreEl.textContent=`+${s.op.score} pts`; scoreEl.classList.add('visible'); }
+  else scoreEl.classList.remove('visible');
 
   // Dots
-  let dotIdx = 0;
-  steps.forEach((st, i) => {
-    if (!st.op) return;
-    const dot = document.getElementById(`dot-${dotIdx}`);
-    if (dot) {
-      dot.className = 'dot' + (i < idx ? ' done' : i === idx ? ' current' : '');
-    }
+  let dotIdx=0;
+  steps.forEach((st,i)=>{
+    if(!st.op) return;
+    const dot=document.getElementById(`dot-${dotIdx}`);
+    if(dot) dot.className='dot'+(i<idx?' done':i===idx?' current':'');
     dotIdx++;
   });
 
   // Piece strip
-  if (data) {
-    data.figures.forEach((_, fi) => {
-      const card = document.getElementById(`piece-${fi}`);
-      if (!card) return;
-      card.classList.remove('active', 'used');
-      if (s.usedBefore?.[fi]) card.classList.add('used');
-      else if (s.activeBid === fi) card.classList.add('active');
-
-      // Highlight piece cells
-      const bw = blockWidth(data.figures[fi]);
-      const bh = data.figures[fi].length;
-      for (let r = 0; r < bh; r++) {
-        for (let c = 0; c < bw; c++) {
-          const pc = document.getElementById(`pc-${fi}-${r}-${c}`);
-          if (!pc) continue;
-          pc.classList.remove('active');
-          if (s.activeBid === fi) pc.classList.add('active');
-        }
-      }
-    });
-  }
+  if(data) data.figures.forEach((_,fi)=>{
+    const card=document.getElementById(`piece-${fi}`); if(!card) return;
+    card.classList.remove('active','used');
+    if(s.usedBefore?.[fi]) card.classList.add('used');
+    else if(s.activeBid===fi) card.classList.add('active');
+    const bw=blockWidth(data.figures[fi]), bh=data.figures[fi].length;
+    for(let r=0;r<bh;r++) for(let c=0;c<bw;c++){
+      const pc=document.getElementById(`pc-${fi}-${r}-${c}`); if(!pc) continue;
+      pc.classList.remove('active');
+      if(s.activeBid===fi) pc.classList.add('active');
+    }
+  });
 
   // Buttons
-  document.getElementById('btn-prev').disabled = idx === 0;
-  document.getElementById('btn-next').disabled = idx === totalSteps - 1;
-  document.getElementById('btn-next').textContent =
-    idx === totalSteps - 2 ? 'Final →' : 'Next →';
+  document.getElementById('btn-prev').disabled=idx===0;
+  document.getElementById('btn-next').disabled=idx===totalSteps-1;
+  document.getElementById('btn-next').textContent=idx===totalSteps-2?'Final →':'Next →';
 
   // State hint
-  const stateEl = document.getElementById('state-label');
-  if (s.isInitial) stateEl.textContent = 'Tap Next to start';
-  else if (s.isFinalBoard) stateEl.textContent = 'All moves placed';
-  else if (s.clearedRows.length || s.clearedCols.length) {
-    const n = s.clearedRows.length + s.clearedCols.length;
-    stateEl.textContent = `🔥 ${n} line${n>1?'s':''} cleared`;
-  } else stateEl.textContent = '';
+  const stEl=document.getElementById('state-label');
+  if(s.isInitial)       stEl.textContent='Tap Next to begin';
+  else if(s.isFinalBoard) stEl.textContent='All pieces placed';
+  else if(hasClears){
+    const n=crSet.size+ccSet.size;
+    stEl.textContent=`${n} line${n>1?'s':''} cleared — well played!`;
+  } else stEl.textContent='';
 }
 
-// ── Navigation ────────────────────────────────────────────────────────────
-document.getElementById('btn-next').addEventListener('click', () => {
-  if (currentStep < totalSteps - 1) { currentStep++; renderStep(currentStep); }
+// ── Navigation ────────────────────────────────────────────────────────────────
+document.getElementById('btn-next').addEventListener('click',()=>{
+  if(currentStep<totalSteps-1){ currentStep++; renderStep(currentStep); }
 });
-document.getElementById('btn-prev').addEventListener('click', () => {
-  if (currentStep > 0) { currentStep--; renderStep(currentStep); }
+document.getElementById('btn-prev').addEventListener('click',()=>{
+  if(currentStep>0){ currentStep--; renderStep(currentStep); }
 });
 
-// Swipe support
-let touchStartX = 0;
-document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, {passive:true});
-document.addEventListener('touchend', e => {
-  const dx = e.changedTouches[0].clientX - touchStartX;
-  if (Math.abs(dx) > 60) {
-    if (dx < 0 && currentStep < totalSteps - 1) { currentStep++; renderStep(currentStep); }
-    if (dx > 0 && currentStep > 0)               { currentStep--; renderStep(currentStep); }
+let touchStartX=0;
+document.addEventListener('touchstart',e=>{ touchStartX=e.touches[0].clientX; },{passive:true});
+document.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-touchStartX;
+  if(Math.abs(dx)>55){
+    if(dx<0&&currentStep<totalSteps-1){ currentStep++; renderStep(currentStep); }
+    if(dx>0&&currentStep>0){            currentStep--; renderStep(currentStep); }
   }
-}, {passive:true});
+},{passive:true});
 
-// ── Score badge ───────────────────────────────────────────────────────────
-if (data?.solution?.score) {
-  document.getElementById('score-badge').textContent = `+${data.solution.score} pts`;
-}
+// ── Init ──────────────────────────────────────────────────────────────────────
+if(window.Telegram?.WebApp){ Telegram.WebApp.ready(); Telegram.WebApp.expand(); }
 
-// ── Init ──────────────────────────────────────────────────────────────────
-if (window.Telegram?.WebApp) {
-  Telegram.WebApp.ready();
-  Telegram.WebApp.expand();
-}
-
-if (data) {
+if(data){
+  if(data.solution?.score) document.getElementById('score-badge').textContent=`+${data.solution.score} pts`;
   buildDots();
+  buildColLabels();
+  buildRowLabels();
   buildMainGrid();
   buildPieceStrip();
   renderStep(0);
