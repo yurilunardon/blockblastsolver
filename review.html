@@ -7,28 +7,29 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Varela+Round&family=Fredoka:wght@500;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
 <style>
 :root {
-  --page: #070b18;
-  --page-top: #172448;
-  --panel: rgba(13, 20, 43, 0.92);
-  --panel-strong: #101a3a;
-  --line: rgba(255, 255, 255, 0.12);
-  --line-hot: rgba(255, 214, 92, 0.55);
-  --text: #f5f7ff;
-  --muted: #9da9d2;
-  --soft: #66739f;
-  --empty: #121f42;
-  --empty-hi: #1a2b5a;
-  --yellow: #ffd447;
-  --orange: #ff914d;
-  --pink: #ff5f8f;
-  --blue: #2f80ed;
-  --cyan: #2ed3ff;
-  --green: #22d36c;
-  --purple: #9d6cff;
-  --shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
+  --page:         #425892;               /* sfondo piatto, NO gradiente */
+  --page-top:     #425892;
+  --panel:        rgba(30, 45, 90, 0.92);
+  --panel-strong: #1e2d5a;
+  --line:         rgba(255, 255, 255, 0.10);
+  --line-hot:     rgba(255, 214, 92, 0.55);
+  --text:         #f5f7ff;
+  --muted:        #9da9d2;
+  --soft:         #66739f;
+  --empty:        #2A3A6A;               /* griglia vuota */
+  --empty-hi:     #23325E;               /* bordi celle vuote */
+  --yellow:       #F5D23C;
+  --orange:       #F58F28;
+  --pink:         #F04744;               /* rimappato su rosso */
+  --blue:         #3268D7;
+  --cyan:         #48C0F3;
+  --green:        #62C757;
+  --purple:       #9B55DA;
+  --shadow:       0 18px 44px rgba(0, 0, 0, 0.34);
 }
 
 *, *::before, *::after {
@@ -41,23 +42,15 @@
 
 body {
   min-height: 100vh;
-  background:
-    linear-gradient(180deg, var(--page-top) 0%, #111832 36%, var(--page) 100%);
+  background: var(--page);              /* NESSUN gradiente radiale */
   color: var(--text);
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: "Varela Round", "Fredoka", system-ui, sans-serif;
   overflow-x: hidden;
   padding-bottom: env(safe-area-inset-bottom);
 }
 
 body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.055) 0 1px, transparent 1px 24px),
-    linear-gradient(45deg, rgba(255, 212, 71, 0.04) 0 1px, transparent 1px 30px);
-  opacity: 0.55;
+  display: none;                         /* rimuovi overlay a griglia */
 }
 
 button {
@@ -221,27 +214,24 @@ button {
   aspect-ratio: 1;
   border: 0;
   border-radius: 6px;
-  background: linear-gradient(180deg, var(--empty-hi), var(--empty));
+  background: var(--empty);
   box-shadow:
-    inset 0 3px 0 rgba(255, 255, 255, 0.05),
-    inset 0 -3px 0 rgba(0, 0, 0, 0.18);
+    inset 1px 1px 0 var(--empty-hi),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.25);
   cursor: pointer;
-  transition: transform 0.09s ease, filter 0.12s ease, background 0.12s ease;
+  transition: transform 0.09s ease;
 }
 
+/* Cella filled: effetto plastica 3D */
 .gc.on {
-  background:
-    linear-gradient(180deg, var(--tile-hi), var(--tile)),
-    var(--tile);
+  background: var(--tile);
   box-shadow:
-    inset 0 5px 0 rgba(255, 255, 255, 0.25),
-    inset 0 -5px 0 rgba(0, 0, 0, 0.16),
-    0 6px 12px rgba(0, 0, 0, 0.18);
+    inset 2px 2px 0 var(--tile-hi),
+    inset -3px -3px 0 var(--tile-shadow);
 }
 
 .gc:active {
   transform: scale(0.84);
-  filter: brightness(1.08);
 }
 
 .tray-panel {
@@ -350,11 +340,10 @@ button {
   grid-column: var(--c);
   grid-row: var(--r);
   border-radius: 5px;
-  background: linear-gradient(180deg, var(--cube-hi), var(--cube));
+  background: var(--cube);
   box-shadow:
-    inset 0 4px 0 rgba(255, 255, 255, 0.28),
-    inset 0 -4px 0 rgba(0, 0, 0, 0.15),
-    0 4px 8px rgba(0, 0, 0, 0.18);
+    inset 2px 2px 0 var(--cube-hi),
+    inset -3px -3px 0 var(--cube-shadow);
 }
 
 .slot-card .piece-shape {
@@ -595,16 +584,20 @@ const GRID_SIZE = 8;
 const SLOT_COUNT = 3;
 
 const BOARD_COLORS = [
-  ["#2f80ed", "#67b7ff"],
-  ["#22d36c", "#7bffab"],
-  ["#ffd447", "#fff38b"],
-  ["#ff5f8f", "#ffa0bd"],
-  ["#9d6cff", "#c8a8ff"],
-  ["#2ed3ff", "#8cf0ff"],
-  ["#ff914d", "#ffc184"]
+  ["#3268D7", "#5A8DF5", "#204CB0"],   // Blu
+  ["#48C0F3", "#76D6FF", "#289CD3"],   // Azzurro
+  ["#62C757", "#85E07B", "#42A339"],   // Verde
+  ["#F5D23C", "#FFE970", "#D1AB1B"],   // Giallo
+  ["#F58F28", "#FFB25E", "#D16C0D"],   // Arancione
+  ["#F04744", "#FF7573", "#CC2624"],   // Rosso
+  ["#9B55DA", "#BF80FA", "#7634B3"],   // Viola
 ];
 
-const PIECE_COLORS = ["#2f80ed", "#22d36c", "#ffd447", "#ff5f8f", "#9d6cff", "#2ed3ff", "#ff914d"];
+// ── PIECE_COLORS: fallback per pezzi non trovati nel catalogo ────────────────
+const PIECE_COLORS = [
+  "#3268D7", "#48C0F3", "#62C757",
+  "#F5D23C", "#F58F28", "#F04744", "#9B55DA"
+];
 
 const CATALOG = [
   {
@@ -792,16 +785,17 @@ function metaForFigure(fig, fallbackIndex = 0) {
 }
 
 function colorPair(color) {
-  const hi = {
-    "#2f80ed": "#67b7ff",
-    "#22d36c": "#7bffab",
-    "#ffd447": "#fff38b",
-    "#ff5f8f": "#ffa0bd",
-    "#9d6cff": "#c8a8ff",
-    "#2ed3ff": "#8cf0ff",
-    "#ff914d": "#ffc184"
+  const map = {
+    "#3268D7": ["#5A8DF5", "#204CB0"],
+    "#48C0F3": ["#76D6FF", "#289CD3"],
+    "#62C757": ["#85E07B", "#42A339"],
+    "#F5D23C": ["#FFE970", "#D1AB1B"],
+    "#F58F28": ["#FFB25E", "#D16C0D"],
+    "#F04744": ["#FF7573", "#CC2624"],
+    "#9B55DA": ["#BF80FA", "#7634B3"],
   };
-  return [color, hi[color] || "#ffffff"];
+  const [hi, sh] = map[color] ?? ["#ffffff", "#999999"];
+  return [color, hi, sh];
 }
 
 function renderShape(target, fig, color) {
@@ -819,7 +813,7 @@ function renderShape(target, fig, color) {
 
   const width = blockWidth(clean);
   const height = clean.length;
-  const [cube, cubeHi] = colorPair(color);
+  const [cube, cubeHi, cubeShadow] = colorPair(color);
   target.style.gridTemplateColumns = `repeat(${width}, var(--piece-cell))`;
   target.style.gridTemplateRows = `repeat(${height}, var(--piece-cell))`;
 
@@ -828,10 +822,9 @@ function renderShape(target, fig, color) {
       if (!(clean[r] & (1 << (width - 1 - c)))) continue;
       const cell = document.createElement("span");
       cell.className = "piece-cube";
-      cell.style.setProperty("--r", String(r + 1));
-      cell.style.setProperty("--c", String(c + 1));
-      cell.style.setProperty("--cube", cube);
-      cell.style.setProperty("--cube-hi", cubeHi);
+      cell.style.setProperty("--cube",        cube);
+      cell.style.setProperty("--cube-hi",     cubeHi);
+      cell.style.setProperty("--cube-shadow", cubeShadow);
       target.appendChild(cell);
     }
   }
@@ -843,11 +836,12 @@ function buildGrid() {
   for (let r = 0; r < GRID_SIZE; r++) {
     for (let c = 0; c < GRID_SIZE; c++) {
       const cell = document.createElement("button");
-      const pair = BOARD_COLORS[(r * 3 + c) % BOARD_COLORS.length];
+      const [tile, tileHi, tileShadow] = BOARD_COLORS[(r * 3 + c) % BOARD_COLORS.length];
       cell.type = "button";
       cell.className = "gc" + (gridState[r][c] ? " on" : "");
-      cell.style.setProperty("--tile", pair[0]);
-      cell.style.setProperty("--tile-hi", pair[1]);
+      cell.style.setProperty("--tile",        tile);
+      cell.style.setProperty("--tile-hi",     tileHi);
+      cell.style.setProperty("--tile-shadow", tileShadow);
       cell.setAttribute("aria-label", `Cella ${r + 1}-${c + 1}`);
       cell.addEventListener("pointerdown", () => toggleGrid(cell, r, c));
       el.appendChild(cell);
